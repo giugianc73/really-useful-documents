@@ -70,4 +70,33 @@ mette in comunicazione con il repository tale da poter generare o
 editare un documento presente su Git.
 
 Dopo aver fatto uno studio sulle possibili scelte, siamo giunti alla
-conclusione che
+conclusione che due strade fanno al nostro caso: \* editor di github.com
+\* editor di github.dev
+
+Sonio due cose distine e diverse. Facciamo un po' di chiarezza.
+
+##### EDITOR DI GITHUB.COM
+
+come si può evincere dalle immagini ho sempre la possibilità di creare
+un nuovo file all'interno del repository di GitHub e scrivere quello che
+si vuole. Ovviamente quando si ha finito, lo si può salvare e commitare.
+![New
+File](https://labdocs.smeup.com/H3LS04-NW21000456/Editor_NewFile_githubcom.PNG)
+![Create
+File](https://labdocs.smeup.com/H3LS04-NW21000456/Editor_CreateFile_githubcom.PNG)
+
+***Però questa possibilità di editare su github è molto limitata come
+funzionalità.***
+
+##### EDITOR DI GITHUB.DEV
+
+C'è un'altra strada sempre rilasciata da GitHub. Per accedere a questo
+editor, dobbiamo cambiare l'endpoint da **github.com** a **github.dev**
+In pratica a primo impatto è come Visual Studio Code. Ci sono tante e
+moltissime funzionalità rispetto all'editor precedente.
+
+Si possono creare directory, file, modificare tutto rimanendo sempre
+connessi con il nostro repository.
+
+![Editor
+GitHubDev](https://labdocs.smeup.com/H3LS04-NW21000456/Editor_githubdev.PNG)
