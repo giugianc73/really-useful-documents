@@ -29,7 +29,7 @@ Dobbiamo trovare e riparare tutti gli elementi in discrepanza senza dover riscri
 
 ### Elementi Discrepanti
 #### Header
-L'implementazione CommonMark è molto certosina per quanto riguarda spazi e *a capi*, in LabDocs non ci sono problemi se un header è scritto come `#Header` o `# Header`, in GitHub solo la versione **con lo spazio** viene renderizzata correttamente. Questi problemi di identazione e spaziatura sono risolvibili con un convertitore di documenti come [**Pandoc**](https://pandoc.org/).
+L'implementazione CommonMark è molto certosina per quanto riguarda spazi e *a capi*, in LabDocs non ci sono problemi se un header è scritto come `#Header` o `# Header`, in GitHub solo la versione **con `space`** viene renderizzata correttamente. Questi problemi di identazione e spaziatura sono risolvibili con un convertitore di documenti come [**Pandoc**](https://pandoc.org/).
 
 #### Table of Content
 La Table of Content non viene correttamente renderizzata in quanto l'espressione `[TOC]` o `[[_TOC_]]`, utilizzata molto spesso nei documenti su LabDocs, non è riconosciuta. GitHub obbliga quindi gli utenti a creasi una loro TOC nel documento, cosa molto poco conveniente, ma mette a disposizione **una sua versione da interfaccia grafica**, quindi il problema si pone nel:
@@ -54,14 +54,14 @@ Una volta spostato l'intero database su GitHub sarebbe ideale poter aggiungervi 
 ### La scelta dell'Editor
 Per capire che editor di testo scegliere dobbiamo prima capire cosa vogliamo noi scrittori da esso:
 - **Drag And Drop**: L'upload e la gestione delle immagini deve essere gestito dal software, l'unica cosa che l'utente deve fare è trascinare l'immagine dentro al testo.
-- **Push** **diretto**: Il file salvato deve poter essere pushato direttamente nella repository.
+- **Cloud Sync**: Il file salvato deve poter essere pushato e/o sincronizzato direttamente nella repository di GitHub.
 - **Accessibile Ovunque**: Posso visualizzare ed editare i miei documenti da qualsiasi PC o Smartphone, una ***Applicazione** **Web*** è preferibile per questo.
 - **Produttività**: L'inclusione di Snippet, di autocompletamento del codice e di un Render-Preview in tempo reale. Tutte risorse che rendano la stesura di un documento facile ed immediata.
-- **Multi-Utente**: In LabDocs non è supportato l'editing collaborativo, questo significa che se due utenti modificano lo stesso documento l'ultimo a salvare avrà la meglio. Vogliamo un applicativo che sia in grado di gestire più utenti in contemporanea (editor o viewer) sullo stesso documento.
+- **Multi-Utente**: In LabDocs non è supportato l'editing collaborativo, questo significa che se due utenti modificano lo stesso documento l'ultimo a salvare avrà la meglio. Vogliamo un applicativo che sia in grado di gestire più **utenti in contemporanea** (editor o viewer) sullo stesso documento.
 - **User-Friendly:** Una interfaccia grafica semplice e intuitiva è sempre ben gradita.
 
 ### Alcuni Editor di Nota
-Vediamo alcuni applicativi che risultano (più o meno) idonei a quello che cerchiamo.
+Vediamo alcuni applicativi che risultano (più o meno) idonei a quello che cerchiamo (*ma anche altri editor che risultano lontani da quello che ci serv*e).
 
 #### [CodiMD](https://github.com/hackmdio/codimd/) e [HackMD](https://hackmd.io/)
 Rispettivamente versione Open-Source e non, sono degli editor web, desktop ed estensioni VSCode molto versatili, con una interfaccia semplice e che permettono Drag&Drop di immagini (*anche CopyPaste*), Editing Collaborativo, e un collegamento con le repository su GitHub. Le immagini caricate vengono uploadate su [imgur](https://imgur.com) per gli utenti free, su un server Amazon S3 privato per gli utenti premium e con delle soluzioni ad-hoc per le aziende. Per i dettagli sui prezzi e le differenze tra i vari piani rifarsi a questo [link](https://hackmd.io/pricing).
@@ -91,17 +91,40 @@ Editor Desktop gratuito
 #### [ZNote](https://znote.io/)
 Editor Desktop gratuito
 
+*... And Many More ...*
 
-## Mantenimento
-
-### Caricamento e visualizzazione di tutto il contenuto del LabDocs
-Purtroppo Git Hub ha un limite di visualizzazione, lato front-end, di solamente 1000 file. Questo cosa comporta? che se noi abbiamo da visualizzare 1500 file, i restanti 500 che non sono visualizzabili, non possono essere visualizzati al livello di interfaccia web. Però, va precisato che nel repository questi 500 file sono presenti, infatti il manuale ufficiale di Git Hub comunicare che se uno vuole vedere i file non visualizzabili, bisogna clonare il repository sul proprio pc.
-
-### Altre Soluzioni alternative per creare una wiki
+### Soluzioni alternative che si estendono al semplice Editor di Markdown
+Questi software risultano molto completi per gestire una ampia mole di dati che fanno da wiki, ma nessuno di essi risulta estremamente light e sono tutti da scaricare e installare.
 - [Outline](https://www.getoutline.com)
+- [Boost Note](https://boostnote.io/)
 - [Read The Docs](https://readthedocs.org/)
 - [MKDocs](https://www.mkdocs.org/)
 - [Wiki.js](https://js.wiki/)
+- [Notable](https://notable.app/)
 
-### Fonti
+
+## Mantenimento
+Gestire, mantenere e anche semplicemente navigare una repository cosi enorme (e che continuerà ad aumentare) è sicuramente molto complicato, per questo dobbiamo trovare un modo (con strumenti propri o un software terzo) per **muoverci all'interno di questa** complicata rete di file.
+
+### Il Problema
+La versione Web di GitHub ci permette di vedere fino a un **massimo di mille "righe"** per directory ([Documentazione GitHub](https://developer.github.com/v3/search/#about-the-search-api)), per riuscire a visualizzarle tutte bisogna clonare la repository con Git, la cosa risulta molto laboriosa, sopratutto nelle fasi iniziali, dove la quantità di dati da scaricare risulta abbastanza impegnativa, per questo dobbiamo trovare un modo di evitare di clonare la repo in locale (e successivamente aggiornarla a ogni cambiamento) o quantomeno un modo per evitare di dover clonare la repo ogni volta nella sua interezza.
+
+### Possibili Soluzioni
+
+#### Riorganizzare la Repository
+Una soluzione bruta nel pensiero ma non banale nell'esecuzione è riorganizzare le directory, in modo che siano visibili tutte le righe nella UI Web e quindi banalmente cercare con `Ctrl+F`.
+
+#### Utilizzare Go to File
+GitHub Web mette a disposizione una ricerca file integrata:
+
+![](https://i.imgur.com/kexyeyV.png)
+
+
+#### Scalar
+Una possibile soluzione è un "upgrade" di Git, un software di casa Microsoft chiamato [Scalar](https://github.com/microsoft/scalar). 
+Consiste in un insieme di strumenti ed estensioni per Git per permettere di gestire Repository molto grandi.
+
+(*Need Further Testing di tutte le soluzioni. Non ho ancora accesso a una repo cosi grande*)
+
+## Fonti
 Apparte vari forum la source principale per questo articolo è stata [Markdown Guide](https://www.markdownguide.org/)
