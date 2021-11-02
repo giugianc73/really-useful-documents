@@ -1,4 +1,10 @@
-\[\[*TOC*\]\]
+- [Problematiche riscontrate](#problematiche-riscontrate)
+    + [Immagini](#immagini)
+    + [TOC - Table Of Contenent](#toc---table-of-contenent)
+    + [Caricamento e visualizzazione di tutto il contenuto del LabDocs](#caricamento-e-visualizzazione-di-tutto-il-contenuto-del-labdocs)
+    + [Editor](#editor)
+      - [EDITOR DI GITHUB.COM](#editor-di-githubcom)
+      - [EDITOR DI GITHUB.DEV](#editor-di-githubdev)
 
 # MIGRAZIONE E TEST DA LABDOCS A GITHUB
 
