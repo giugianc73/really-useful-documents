@@ -2,8 +2,6 @@
 # LabDocs su GitHub
 Questo progetto si occupa di trovare una soluzione per stabilire la documentazione del gruppo SmeUp su GitHub.
 
-[TOC]
-
 ## Introduzione
 Il progetto si occupa di tre aspetti:
 - Migrazione.
