@@ -1,821 +1,355 @@
-# Accessi nativi in SPL
+# Archivi smeup su DB non relazionali + k48 
 
-Implementare nell'interprete SPL delle istruzioni che vadano ad eseguire i metodi del prototipo accessi nativi.
-Qualcosa tipo, dato questo codice:
+###Comitati da coinvolgere:
+* Strumenti Server
+* Tecnologie Server
+* Integrazione
+* Multienvironment
+
+##Introduzione
+Lo scopo del progetto è trovare eventuali limiti o nuove idee per la persistenza di oggetti su database non relazionali, in ottica multi piattaforma. 
+
+###Database analizzati
+* MongoDB (object database)
+* Redis (key-value database)
+* Neo4Js (Document-Graph database)
+* Cassandra (database a colonne)
+* MariaDB (database relazionale forkato da MySQL)
+
+I seguenti database sono stati documentati nella cartella [`DB-non-relazionali`](https://labdocs.smeup.com/pages/DB-non-relazionali/):
+* [MongoDB](https://labdocs.smeup.com/DB-non-relazionali/MongoDB)
+* [Redis](https://labdocs.smeup.com/DB-non-relazionali/Redis)
+* [OrientDB](https://labdocs.smeup.com/DB-non-relazionali/OrientDB)
+* [Cassandra](https://labdocs.smeup.com/DB-non-relazionali/Cassandra)
+* [Neo4Js](https://labdocs.smeup.com/DB-non-relazionali/Neo4j)
+
+###File AS400 trasferiti
+I file (tabelle SQL) esportati da AS400 dalle librerie (collection) **SMEUP_DAT** e **SMETAB** sono:
+
+
+
+| Nome    | Dimensione | Libreria  | Descrizione 
+|---------|------------|-----------|-------------
+|BRARTI0F |760         |SMEUP_DAT  |Esempio di file (tabella) di anagrafica (contenente gli articoli) "semplice".
+|BRENTI0F |63150       |SMEUP_DAT  |Esempio di file (tabella) di anagrafica (contenente gli enti) che può essere visto come "insieme di gruppi". Contiene infatti i clienti, i fornitori, le banche, ecc.
+|JALOGT0F |7251188     |SMEUP_DAT  |Tipico file (tabella) che contiene log quindi potenzialmente con molti record. Inoltre contiene un campo molto lungo (30000 byte).
+|C£ESO00F |2027        |SMEUP_DAT  |File con più chiavi.
+|V5TDOC0F |753         |SMEUP_DAT  |Contiene testate di documenti. 
+|V5RDOC0F |983         |SMEUP_DAT  |Contiene righe di documenti. 
+|TABEL00F |81183       |SMETAB     |esempio di file (tabella) in cui sono memorizzate *tabelle Sme.UP*. Formate da un campo di 100 byte in cui vengono immagazzinate informazioni eterogenee che possono essere diverse record per record e da una sorta di tipo record che identifica il modo in cui le informazioni sono scritte nel campo "libero".
+
+**V5TDOC0F e V5RDOC0F** Sono due file logicamente collegati. Il primo contiene testate di documenti, il secondo le righe. Quindi, ad esempio, per formare un ordina di vendita si ha un record su V5TDOC0F (la testata appunto) e n record su V5RDOC0F (le righe appunto). Ci sono due campi del V5RDOC0F che contengono le chiavi di riferimento del V5TDOC0F.
+
+###Tool utilizzati
+* **Docker** per creare delle applicazioni virtuali di database indipendenti. Sono i prototipi di database su cui vengono trasferiti i dati da AS400.
+* **Pentaho Data Integration (PDI) - Kettle** software per il trasferimento dati.
+* **MongoDB Compass** come client GUI ufficiale di MongoDB [link](https://www.mongodb.com/download-center/compass)
+* **Mongo Shell** è possibile interrograre il database da riga di comando [link](https://docs.mongodb.com/manual/mongo/)
+* **redis-cli** 
+* **Redis plugin per Pentaho** per la scrittura in Redis usando Pentaho. Si scarica a questo [link](https://github.com/DanielYWoo/pentaho-di-redis-plugin)
+
+##DB AS400
 <pre>
-fun t02_findTwoAfterErbuscWithSetll4AndReadE3() {  
-        val dbFile = dbManager!!.openFile(libName!!, MUNICIPALITY_TABLE_NAME)  
-        assertTrue(dbFile!!.setll(buildMunicipalityKey("IT", "LOM", "BS", "ERBUSC")))  
-        assertEquals("ERBUSCO", getMunicipalityName(dbFile.readEqual(buildMunicipalityKey("IT", "LOM", "BS")).record))  
-        assertEquals("ESINE", getMunicipalityName(dbFile.readEqual(buildMunicipalityKey("IT", "LOM", "BS")).record))  
-        assertEquals("FIESSE", getMunicipalityName(dbFile.readEqual(buildMunicipalityKey("IT", "LOM", "BS")).record))  
-        dbManager!!.closeFile(libName!!, MUNICIPALITY_TABLE_NAME)  
-    }  
+Driver:     JTOpen(AS/400)
+Url:        jdbc:as400://srvlab01.smeup.com  
+Libreria:   SMEUP_DAT 
 </pre>
 
-qualcosa tipo questo (ma è da capire come gestire i valori di ritorno):  
-
-<pre>
-OPEN MUNICIPALITY
-SETLL IT LOM ERBUSC 
-READE IT LOM BS  
-READE IT LOM BS 
-READE IT LOM BS 
-CLOSE MUNICIPALITY
-</pre>
-
-Gli scopi del progetto sono molteplici, di ampio spettro e coinvolgono più fronti/attori in quanto vertono su: 
-
-##### Visibilità
-1. percezione costante dello stato d'avanzamento del progetto Jariko (Misurabilità)
-2. implementazioni e codici operativi già presenti (Funzionalità)
-3. modularità e separazione dei compiti (Disaccoppiamento)
-
-##### Potenzialità
-1. Implementazioni future (Scalabilità)
-2. Dialogo con altre tecnologie (Integrazione)
-3. Estendibile ad un nuovo linguaggio/sintassi da intepretare (Estendibilità) 
-
-##### Testabilità
-1. Facililità scrittura test e sviluppo di nuove funzioni
-2. Estensione ai "non addetti ai lavori" della testabilità delle funzioni presenti (per chi non conosce linguaggi di alto livello)
-
-Infine, oltre a quanto sopra, ovviamente l'iprescindibile valore intrinseco della ricerca.
-
-
-## Riferimenti:
-### Prototipo accessi nativi
-https://github.com/smeup/DBNativeAccess  
-https://mauer.smeup.com/TACPG-PD000139/RapportoFinale  
-
-### Interprete SPL  
-https://github.com/smeup/interpreter-runtime-proto  
-
-## Proposta (Franco Parodi)   
-### Sintassi SPL
-
-Una possibile sintassi per poter creare test per il prototipo di linguaggio interpretato:
-```sh
-OPEN <TableName> //Apertura tabella
-RECORD <FieldName1> <FieldName2> <FieldNameN> //Campi di ritorno del record (non specificato=tutti i campi)
-KEY1 <Value1> <Value2> <ValueN> //Definizione chiave e nome (valori o campi)
-CHAIN <KeyName> //Accesso per chiave
-ASSERTEQ RECORD @Empty //Condizione (prefisso @ per valori costanti riservati, tipo @Empty, @True...)
-KEY2 <Value1> <Value2> //Definizione chiave (valori o campi)
-CHAIN <KeyName> //Accesso per chiave
-ASSERTEQ RECORD.<FieldName> <ValueToCompareWith> //Condizione
-CLOSE <TableName> //Chiusura tabella
+##DB di test su Docker
+Dario ha installato i seguenti database su Docker in una macchina virtuale:
 ```
-**N.B:** _KEYn_ per semplicità è sia codice operativo (definisce che si tratta di definizione di chiave/i), sia il nome stesso della chiave da utilizzare nell'operazione di lettura successiva.
+Name: ITERBVRT013
+S.O.: Ubuntu Linux 18.4 LTE versione Server
+IP:   172.16.2.123
+User: smeup
+Pwd:  (te la dice a voce lol)
+```
+Sono presenti delle configurazioni di esempio lanciabili con *Docker compose*.
 
-Come valore di ritorno di un'operazione (OPEN, SETLL, CHAIN, READ...) si può avere una variabile Boolean, String, o Lista e va specificato con il segno di ">" (maggiore).
-Diversamente si può non specificare ed assumere di avere sempre un valore di ritorno predefinito contestualmente ai codici operativi (OPEN -> boolean, SETLL -> boolean, CHAIN -> lista campi, READ -> lista campi...) 
-```sh
-OPEN <TableName> > <BooleanVar>
-SETLL <KeyName> > <BooleanVar>
-ASSERTEQ SETLL @True
-CHAIN <KeyName> > <Record>
-ASSERTEQ RECORD @Empty
-READ <KeyName> > <Record>
-ASSERTEQ RECORD @Empty
-...
+Database | Porta | Versione
+---------|-------|----------
+MongoDB  |27017  |4.0.10
+Cassandra|9042   |3.11.2
+Redis    |6379   |5.0.5
+Neo4Js   |       |
+MariaDB  |3307   |10.4.7
+
+MariaDB è di default impostato sulla porta 3306, io l'ho rimappata sulla porta 3307.
+
+###Docker Compose
+Serve per lanciare più applicazioni Docker allo stesso tempo sullo stesso host. Si utilizza un file YAML per configurare i servizi da lanciare. In questo modo è possibile lanciare tutte le applicazioni con un unico comando. Entrati nella cartella del database che si vuole lanciare:
+```
+docker-compose up -d
+```
+Per disattivare il database:
+```
+docker-compose down
 ```
 
-#### Sintassi SPL-TEST applicata a casi reali (test del progetto DBNativeAccess)
+##Pentaho Data Integration - Kettle
+Pentaho è una suite completa per la manipolazione, visualizzazione, gestione, analisi, trasferimento di dati da ogni fonte a ogni destinazione. Disponibile sia in Windows che Linux.
 
-```sh
-@Test
-fun findRecordsIfChainWithExistingKey() {
-    val dbFile = dbManager!!.openFile(libName!!, TSTTAB_TABLE_NAME)
-    val chainResult = dbFile!!.chain("XXX")
-    assertEquals("XXX", chainResult.record["TSTFLDCHR"])
-    assertEquals("123.45", chainResult.record["TSTFLDNBR"])
-    dbManager!!.closeFile(libName!!, TSTTAB_TABLE_NAME)
-}
-OPEN TSTTAB_TABLE_NAME 
-KEY1 "XXX"
-RECORD TSTFLDCHR TSTFLDNBR 
-CHAIN KEY1  
-ASSERTEQ RECORD.TSTFLDCHR "XXX"
-ASSERTEQ RECORD.TSTFLDNBR "123.45"
-CLOSE TSTTAB_TABLE_NAME
-```
-```sh
-@Test
-fun doesNotFindRecordsIfChainWithNotExistingKey() {
-    val dbFile = dbManager!!.openFile(libName!!, TSTTAB_TABLE_NAME)
-    assertTrue(dbFile!!.chain("XYZ").record.isEmpty())
-    dbManager!!.closeFile(libName!!, TSTTAB_TABLE_NAME)
-}
-OPEN TSTTAB_TABLE_NAME
-KEY1 "XYZ"
-CHAIN KEY1  
-ASSERTEQ RECORD @Empty
-CLOSE TSTTAB_TABLE_NAME
-```
+![ ](https://bluesoftware.com/wp-content/uploads/2017/01/pentaho-logo.png)  
+[documentazione](https://help.pentaho.com/Documentation/8.3/Products)
 
-```sh
-@Test
-fun findRecordsIfChainWithExistingKey() {
-    val dbFile = dbManager!!.openFile(libName!!, TST2TAB_TABLE_NAME)
-    val key2 = listOf(
-         RecordField("TSTFLDCHR", "ABC"),
-         RecordField("TSTFLDNBR", "12.00")
-    )
-    val chainResult = dbFile!!.chain(key2)
-    assertEquals("ABC", chainResult.record["TSTFLDCHR"])
-    assertEquals("12.00", chainResult.record["TSTFLDNBR"])
-    assertEquals("ABC12", chainResult.record["DESTST"])
-    dbManager!!.closeFile(libName!!, TST2TAB_TABLE_NAME)
-}
-OPEN TST2TAB_TABLE_NAME 
-KEY2 "ABC" "12.00"
-RECORD TSTFLDCHR TSTFLDNBR DESTST
-CHAIN KEY2
-ASSERTEQ RECORD.TSTFLDCHR "ABC"
-ASSERTEQ RECORD.TSTFLDNBR "12.00"
-ASSERTEQ RECORD.DESTST "ABC12"
-CLOSE TSTTAB_TABLE_NAME
+La suite è strutturata in diversi tool specifici per le varie necessità. **Data integration** già noto come *Kattle* da accesso ad un motore di trasformazione, trasformazione e caricamento dati (ETL) tra due database diversi.  
+Facilita il processo di migrazione, pulitura e salvataggio dati tra database con architetture differenti, rendendo il dato in un formato fruibile a terze parti.  
+Dopo il download del pacchetto .zip, l'applicazione desktop si apre eseguendo il file 
 ```
+./data-integration/spoon.sh
+``` 
+Prerequisito per il corretto funzionamento dell'applicazione è **Java 8** (Java 11 da problemi).  
+[download](https://community.hitachivantara.com/docs/DOC-1009855-data-integration-kettle)  
+[documentazione](https://help.pentaho.com/Documentation/8.3/Products/Pentaho_Data_Integration)
 
-```sh
-@Test
-fun doesNotFindRecordsIfChainWithNotExistingKey() {
-    val dbFile = dbManager!!.openFile(libName!!, TST2TAB_TABLE_NAME)
-    val key2 = listOf(
-        RecordField("TSTFLDCHR", "ZZZ"),
-        RecordField("TSTFLDNBR", "12")
-    )
-    assertTrue(dbFile!!.chain(key2).record.isEmpty())
-    dbManager!!.closeFile(libName!!, TST2TAB_TABLE_NAME)
-}
-OPEN TST2TAB_TABLE_NAME
-KEY2 "ZZZ" "12"
-CHAIN KEY2  
-ASSERTEQ RECORD @Empty
-CLOSE TSTTAB_TABLE_NAME
+###Configurazione
+####AS400 input
+* Creare una nuova *Trasformazione* e creare una nuova connessione 
+* Configurare il database in ingresso con i seguenti dati:
 ```
-
-```sh
-@Test
-fun t01_notFindErbascoButFindErbuscoWithChain() {
-    val dbFile = dbManager!!.openFile(libName!!, MUNICIPALITY_TABLE_NAME)
-    val chainResult1 = dbFile!!.chain(buildMunicipalityKey("IT", "LOM", "BS", "ERBASCO"))
-    assertEquals(0, chainResult1.record.size)
-    val chainResult2 = dbFile.chain(buildMunicipalityKey("IT", "LOM", "BS", "ERBUSCO"))
-    assertEquals("ERBUSCO", getMunicipalityName(chainResult2.record))
-    dbManager!!.closeFile(libName!!, MUNICIPALITY_TABLE_NAME)
-}
-OPEN MUNICIPALITY_TABLE_NAME 
-RECORD COMUNE
-KEY1 "IT" "LOM" "BS" "ERBASCO"
-CHAIN KEY1
-ASSERTEQ RECORD @Empty
-KEY1 "IT" "LOM" "BS" "ERBUSCO"
-CHAIN KEY1
-ASSERTEQ RECORD.COMUNE "ERBUSCO"
-CLOSE MUNICIPALITY_TABLE_NAME
+Host name:  srvlab01.smeup.com
+Db name:    SMEUP_DAT
+Username:   account AS400
+Password:   Passoword AS400
 ```
+Il nome del database è la libreria di AS400. 
+* Se provando la connessione, il sistema va in crash, serve sostituire il driver JDBC `./lib/jt400.jar` con una versione più recente.
+* Oggetti di base -> Input -> Tabella 'input: Scegliere la connessione impostata prima e immettere la query SQL desiderata. In anteprima si può vedere il risultato.
 
-```sh
-@Test
-fun t02_findTwoAfterErbuscWithSetll4AndReadE3() {
-    val dbFile = dbManager!!.openFile(libName!!, MUNICIPALITY_TABLE_NAME)
-    assertTrue(dbFile!!.setll(buildMunicipalityKey("IT", "LOM", "BS", "ERBUSC")))
-    assertEquals("ERBUSCO", getMunicipalityName(dbFile.readEqual(buildMunicipalityKey("IT", "LOM", "BS")).record))
-    assertEquals("ESINE", getMunicipalityName(dbFile.readEqual(buildMunicipalityKey("IT", "LOM", "BS")).record))
-    assertEquals("FIESSE", getMunicipalityName(dbFile.readEqual(buildMunicipalityKey("IT", "LOM", "BS")).record))
-    dbManager!!.closeFile(libName!!, MUNICIPALITY_TABLE_NAME)
-}
-OPEN MUNICIPALITY_TABLE_NAME 
-KEY1 "IT" "LOM" "BS" "ERBUSC"
-KEY2 "IT" "LOM" "BS"
-RECORD COMUNE
-SETLL KEY1
-ASSERTEQ SETLL @True
-READE KEY2  
-ASSERTEQ RECORD.COMUNE "ERBUSCO"
-READE KEY2  
-ASSERTEQ RECORD.COMUNE "ESINE"
-READE KEY2  
-ASSERTEQ RECORD.COMUNE "FIESSE"
-CLOSE MUNICIPALITY_TABLE_NAME
+##MongoDB
+
+###Interrogazione
+Il database si può interrogare:
+* attraverso la [shell](https://docs.mongodb.com/manual/mongo/) nativa di MongoDB.  
+Ci si connette noto l'IP:
 ```
+mongo "mongodb://172.16.2.123:27017"
+```
+Il database di default è *test*. È stato creato un database denominato *smeup* in cui sono stati trasferiti tutti i file di AS400
+```
+use smeup
+```
+Tutte le interrogazioni saranno così strutturate:
+```
+db.NOME_COLLECTION.comando()
+```
+Dove `NOME_COLLECTION` è stato fatto corrispondere al nome del file AS400 trasferito, all'atto della migrazione in Pentaho.
+* attraverso la GUI nativa di MongoDB [Mongo-compass](https://docs.mongodb.com/compass/current/), che permette la una visualizzazione agevole.
 
-```sh
-@Test
-fun t02B_findTwoAfterErbuscoWithSetll4AndRead() {
-    val dbFile = dbManager!!.openFile(libName!!, MUNICIPALITY_TABLE_NAME)
-    assertTrue(dbFile!!.setll(buildMunicipalityKey("IT", "LOM", "BS", "ERBUSCO")))
-    assertEquals("ERBUSCO", getMunicipalityName(dbFile.read().record))
-    assertEquals("ESINE", getMunicipalityName(dbFile.read().record))
-    assertEquals("FIESSE", getMunicipalityName(dbFile.read().record))
-    dbManager!!.closeFile(libName!!, MUNICIPALITY_TABLE_NAME)
-}
-OPEN MUNICIPALITY_TABLE_NAME 
-KEY1 "IT" "LOM" "BS" "ERBUSCO"
-RECORD COMUNE
-SETLL KEY1
-ASSERTEQ SETLL @True
-READ  
-ASSERTEQ RECORD.COMUNE == "ERBUSCO"
-READ  
-ASSERT RECORD.COMUNE == "ESINE"
-READ  
-ASSERT RECORD.COMUNE == "FIESSE"
-CLOSE MUNICIPALITY_TABLE_NAME
+###Migrazione
+L'esportazione è stata effettuata seguendo i seguenti step **(trasformazioni)** in Pentaho:
+* **Table input** è stata impostata la query SQL 
+```sql
+SELECT * FROM BRARTI0F
+```
+* **Select values** in questo step sono stati rinominati tutti nomi del campi rimuovendo il carattere speciale `§`
+* **String operations**. I campi contenenti stringhe in un database relazionale hanno lunghezza predefinita. Questo step effettua un trim da destra di tutti gli spazi. 
+* **MongoDB Output** Questo step converte la tabella relazionale in documenti JSON. Ogni record sarà un oggetto contenete tante coppie chiave/valore quanti sono i campi non vuoti del record. La preventiva rimozione degli spazi inutili nel precedente passaggio, fa si che i campi vuoti del record non vengano convertiti in coppie chiave/valore. Le impostazioni sono:
+```
+Host Name:           172.16.2.123 (IP macchina virtuale)
+Port:                27017
+Database:            smeup
+Collection:          BRARTI0F (Nome file AS400 da trasferire)
+Truncate collection: yes
+```
+È inoltre possibile impostare una struttura ad albero nel tab *Mongo documents fields*. Nella colonna *Mongo document path* è possibile definire un oggetto-padre in cui incapsulare gli altri oggetti. Lo stesso campo della colonna *Mongo document path* permette di attribuire alla chiave un nome diverso dal campo AS400 corrispondente impostando come `N` la colonna *Use field name* e inserendo il nuovo nome preceduto da un punto. Si noti come in questo modo è possibile saltare lo step 2.
+
+
+Si osservi l'esempio, estratto di un record del file BRARTI0F:
+
+|A§ARTI	|A§DEAR	|A§DEA2	|A§TIAR	|A§TPAR	|A§UNMS	|A§PESO	|A§VOLU	|A§CALT	|A§ARRI	|A§DISE	|A§BARC|
+|---|	---|	---|	---|	---|	---|	---|	---|	---|	---|	---|	---|
+|A01            	|ciao 17/02/2019 11:25:35 ff        	|AGGIUNTIVAaat                      	|ART  	|1	|KG	|8	|100	|               	|      |         	                    	               
+    	               
+```javascript
+_id:"5d4957f222900c0f69c79805",
+descrizione: {DEAR: "ciao 17/02/2019 11:25:35 ff",DEA2:"AGGIUNTIVAaat"},
+tipo:{TIAR:"ART",TPAR:"1"},
+UNMS:"KG",
+PESO:8,
+VOLU:100,
+ARRI:null
+```
+* Il nome di ciascun campo è stato troncato eliminando il prefisso `A§`.
+* I nomi dei campi così modificati sono diventati le chiavi del nuovo oggetto in MongoDB.
+* Le stringhe sono state troncate eliminando gli spazi vuoti.
+* È stata data una struttura ad albero all'oggetto in MongoDB inserendo certi campi in altri oggetti.
+
+####Problemi con il trasferimento date:
+Nei file AS400 presi in esame, le date sono salvate come intero da 8 cifre nel formato `yyyyMMdd`, tuttavia òe date non definite sono indicate con 0. Pentaho riconosce tale codifica come un intero, e come tale lo migra in MongoDB. La conversione a tipo-data nativo di MongoDB può essere effettuata in 3 passaggi:
+* I campi contenenti date in formato numerico sono convertiti in stringa usando lo step *data select* tab *meta dati*
+* I campi contenenti valori uguali a 0 sono posti uguali a `null` nello step *null-if*, in modo da non provocare errori durante la conversione.
+* A questo punto tutti i campi di date sono o nulli o delle stringhe di 8 caratteri nel formato `yyyyMMdd`. Riusando lo step *data select* nel tab *meta-dati* è possibile imporre la conversione in data dei campi, noto il formato. È pure possibile definire il fuso è il formato.
+
+L'output sarà un oggetto-data JavaScript definito come ```ISODate("2000-12-31T23:00:00.000+00:00")```
+
+![](/TACPG-PD000050/img1.png)
+
+####Annidamento
+È possibile configurare Pentaho per effettuare l'annidamento di documenti provenienti da database logicamente correlati. Nell'esempio, è stata trasferita in MongoDB la JOIN di due tabelle:
+* testate della fattura
+* righe della fattura
+
+Ogni testata è correlata ad un numero variabile di righe. Quindi si è fatto in modo che per ogni documento rappresentate un record della tabella delle testate, venisse annidato un array con i documenti di tutte le righe ad essa correlate:
+```javascript
+_id:"5d513339a2147e1d768630a5",
+T§DEDO:"Previsione Cliente Italia     ",
+T§DTDO:"20060209",
+righe:[
+   {R§NRIG:"5", R§CDOG:"A04            ",R§DSOG:"QUARTO ARTICOLO                    "},
+   {R§NRIG:"10",R§CDOG:"DBL199F        ",R§DSOG:"BOLLETTINO TECNICO                 "},
+   {R§NRIG:"15",R§CDOG:"A01            ",R§DSOG:"PRIMO ARTICOLO                     "}
+]
+```
+In Pentaho:
+* Lettura da tabella *testate* e tabella *righe*
+* Riordino delle righe di ciascuna tabella secondo il campo da utilizzare per fare la JOIN
+* Scrittura in MongoDB della tabella risultante dalla JOIN
+  * In *Output Options* marcare:
+    * *Truncate collection*
+    * *Update*
+    * *Upsert*
+    * *Modifier Update* (in modo da abilitare i metodi `$set` e `$push`)
+  * In *Mongo document fields* i campi delle righe sono inseriti due volte:
+     * Prima si configura la struttura del documento con `$set`:
+```
+Mongo document path: nome_array[0]
+Modifier operation:  $set
+Modifier policy:     Insert
+```
+     * Poi si inseriscono i campi annidati nella struttura precedentemente definita con `$push`:
+```
+Mongo document path: nome_array[]
+Modifier operation:  $push
+Modifier policy:     Update
 ```
 
-```sh
-@Test
-fun t03_findTwoBeforeErbuscoWithSetll4AndReadPE3() {
-    val dbFile = dbManager!!.openFile(libName!!, MUNICIPALITY_TABLE_NAME)
-    assertTrue(dbFile!!.setll(buildMunicipalityKey("IT", "LOM", "BS", "ERBUSCO")))
-    assertEquals(
-        "EDOLO",
-         getMunicipalityName(dbFile.readPreviousEqual(buildMunicipalityKey("IT", "LOM", "BS")).record)
-    )
-    assertEquals(
-        "DESENZANO DEL GARDA",
-        getMunicipalityName(dbFile.readPreviousEqual(buildMunicipalityKey("IT", "LOM", "BS")).record)
-    )
-    dbManager!!.closeFile(libName!!, MUNICIPALITY_TABLE_NAME)
-}
-OPEN MUNICIPALITY_TABLE_NAME 
-KEY1 "IT" "LOM" "BS" "ERBUSCO"
-RECORD COMUNE
-SETLL KEY1
-ASSERTEQ SETLL @True
-READPE KEY1 
-ASSERTEQ RECORD.COMUNE "EDOLO"
-READPE KEY1
-ASSERTEQ RECORD.COMUNE "DESENZANO DEL GARDA"
-CLOSE MUNICIPALITY_TABLE_NAME
+![Esempio annidamento](/TACPG-PD000050/joinMongo.png)
+
+##MariaDB
+
+###Interrogazione
+Attraverso SQuirrelSQL è possibile interrogare il database, previa installazione del file JDBC di MariaDB.  
+Parametri di connessione:
+```
+Connection type:  MariaDB
+Host Name:        172.16.2.123
+Database Name:    smeup
+Port Number:      3307
+Username:         user
+Password:         password
 ```
 
-```sh
-@Test
-fun t03B_findTwoBeforeErbuscoWithSetll4AndReadP() {
-    val dbFile = dbManager!!.openFile(libName!!, MUNICIPALITY_TABLE_NAME)
-    assertTrue(dbFile!!.setll(buildMunicipalityKey("IT", "LOM", "BS", "ERBUSCO")))
-    assertEquals("EDOLO", getMunicipalityName(dbFile.readPrevious().record))
-    assertEquals("DESENZANO DEL GARDA", getMunicipalityName(dbFile.readPrevious().record))
-    dbManager!!.closeFile(libName!!, MUNICIPALITY_TABLE_NAME)
-}
-OPEN MUNICIPALITY_TABLE_NAME 
-KEY1 "IT" "LOM" "BS" "ERBUSCO"
-RECORD COMUNE
-SETLL KEY1
-ASSERTEQ SETLL @True
-READP 
-ASSERTEQ RECORD.COMUNE "EDOLO"
-READP
-ASSERTEQ RECORD.COMUNE "DESENZANO DEL GARDA"
-CLOSE MUNICIPALITY_TABLE_NAME
+###Migrazione
+Il trasferimento è stato effettuato tra due database relazionali, dunque senza particolari trasformazioni.
+
+È necessario incollare nella cartella `./data-integration/lib` il file JDBC di MariaDB prima di connettersi.
+
+Ogni file AS400 è stato replicato:
+* Così com'era con lo stesso nome.
+* In aggiunta, è stato creata una copia in cui sono state convertite le date in formato `DATE` rispetto all'intero da 8 cifre contenuto in AS400. La trasformazione ha generato campi nulli laddove la data fosse stata 0. La nuova tabella è stata rinominata con il seguente formato `NOMEORIGINALE_date`.
+
+![](/TACPG-PD000050/mariadb_pentaho.png)
+
+I passaggi sono stati:
+* **Table input** è stata impostata la query SQL 
+```sql
+SELECT * FROM BRARTI0F
+```
+* **MariaDB Output** immediata scrittura del dato così com'era in AS400.
+* **Conversione campi data** in tre passaggi (i primi due propedeutici al terzo):
+  * Conversione da intero a stringa (la conversione in data avviene solo da stringa).
+  * Cancellazione di tutti i campi dati contenenti "0" indicante data assente (le stringhe possono solo essere del formato prestabilito `yyyyMMdd`, altriemnti il campo deve essere `<null>`).
+  * Conversione in data partendo dal pattern `yyyyMMdd`.
+
+Prima del trasferimento, è necessario creare la tabella in MariaDB. L'SQL necessario è generato automaticizzante da Pentaho cliccando apposito bottone (terzo da sinistra in alto). 
+
+####Indici e campi univoci
+
+Sono stati impostati anche i seguenti indici per ogni tabella, basandosi sulle viste di AS400.
+
+| Nome    | Indice     | Campi univoci          | Problemi di encoding?|
+|---------|------------|------------------------|--------------------- |
+|BRARTI0F |BRARTI0L    |A§ARTI                  | Duplicati per case insensitive
+|BRENTI0F |BRENTI8L    |E§IDOJ                  | Caratteri esadecimali non supportati
+|JALOGT0F |JALOGT4L    |J1IDOG                  |
+|C£ESO00F |C£ESO06L    |P£TPRC, P£TP01, P£CD01, P£TP02, P£CD02, P£TP03, P£CD03, P£NUMP, P£DTIN, P£SEQU |
+|C£ESO00F |C£ESO09L    |P£TPRC, P£CD01, P£CD02, P£NUMP, P£DTIN, P£SEQU |
+|V5TDOC0F |V5TDOC0L    |T§TDOC, T§NDOC          |
+|V5RDOC0F |V5RDOC0L    |R§TDOC, R§NDOC, R§NRIG  |
+|TABEL00F |TABEL01L    |TTSETT, TTELEM          | Caratteri esadecimali non supportati
+
+####Encoding
+Molti errori sono stati causati dall'encoding di default impostato su MariaDB, "atin1_swedish_ci" che risulta *case insensitive*. Per questo il corretto trasferimento di alcuni caratteri veniva impedito e  si creavano conflitti all'atto di creazione degli indici. Per risolvere il problema si è impostato il server di default su 
+```sql
+SET collation_server = 'utf8_bin'; 
+```
+* [Encoding MariaDB](https://mariadb.com/kb/en/library/setting-character-sets-and-collations/)
+
+####Date
+
+La generazione delle tabelle `NOME_date` è stata fatta manualmente in SQuirrelSQL perché Pentaho considera solamente il formato `DATETIME`. Dunque prima di lanciare l'SQL necessario alla generazione della tabella, esso viene copiato, tutti i formati `DATETIME` vengono manualmente cambiati `DATE` e il comando è infine lanciato in SQuirrelSQL.
+
+Durante il trasferimento, il sistema non da errori. Si suppone che avvenga un casting automatico all'interno di MariaDB. 
+
+Il risultato è che ogni campo connettente un intero da 8 cifre nel formato `yyyyMMdd` è stato convertito in formato SQL `DATE` del tipo `yyyy-MM-dd`.
+
+##Redis
+La scrittura in Redis è stata effettuata convertendo ogni record in una stringa JSON.
+[plugin Pentaho](https://github.com/DanielYWoo/pentaho-di-redis-plugin)
+
+##Cassandra 
+###Interrogazione
+Il modo migliore trovato per interagire con il database è attraverso la shell nativa `cqlsh` versione 5.0.1. Si scarica solo installando Cassandra in toto (si veda [link](https://www.vultr.com/docs/how-to-install-apache-cassandra-3-11-x-on-ubuntu-16-04-lts) per Ubuntu).  
+```
+cqlsh $CQLSH_HOST 172.16.2.123
+```
+Si è poi provveduto a creare il database detto *KEYSPACE* in Cassandra denominato `smeup`:
+```sql
+CREATE KEYSPACE smeup
+  WITH REPLICATION = { 
+   'class' : 'SimpleStrategy', 
+   'replication_factor' : 1 
+  };
 ```
 
-```sh
-@Test
-fun t04_findLastOfBergamoWithSetll4AndReadPE2() {
-    val dbFile = dbManager!!.openFile(libName!!, MUNICIPALITY_TABLE_NAME)
-    assertTrue(dbFile!!.setll(buildMunicipalityKey("IT", "LOM", "BS", "ACQUAFREDDA")))
-    assertEquals(0, dbFile.readPreviousEqual(buildMunicipalityKey("IT", "LOM", "BS")).record.size)
-    assertTrue(dbFile.setll(buildMunicipalityKey("IT", "LOM", "BS", "ACQUAFREDDA")))
-    assertEquals("ZOGNO", getMunicipalityName(dbFile.readPreviousEqual(buildMunicipalityKey("IT", "LOM")).record))
-    dbManager!!.closeFile(libName!!, MUNICIPALITY_TABLE_NAME)
-}
-OPEN MUNICIPALITY_TABLE_NAME 
-KEY1 "IT" "LOM" "BS" "ACQUAFREDDA"
-KEY2 "IT" "LOM" "BS"
-KEY3 "IT" "LOM"
-RECORD COMUNE
-SETLL KEY1
-ASSERTEQ SETLL @True
-READPE KEY2
-ASSERTEQ RECORD @Empty
-SETLL KEY1
-ASSERTEQ SETLL @True
-READPE KEY3
-ASSERTEQ RECORD.COMUNE "ZOGNO"
-CLOSE MUNICIPALITY_TABLE_NAME
+###Migrazione
+Ogni file AS400 è stato replicato:
+* Così com'era con lo stesso nome.
+* In aggiunta, è stato creata una copia in cui sono state convertite le date in formato `TIMESTAMP` rispetto all'intero da 8 cifre contenuto in AS400. La trasformazione ha generato campi nulli laddove la data fosse stata 0. La nuova tabella è stata rinominata con il seguente formato `NOMEORIGINALE_date`.
+
+![](/TACPG-PD000050/cassandra_pentaho.png)
+
+L'esportazione è stata effettuata seguendo i seguenti step **(trasformazioni)** in Pentaho:
+* **Table input** è stata impostata la query SQL 
+```sql
+SELECT * FROM BRARTI0F
+```
+* **Select values** in questo step sono stati rinominati tutti nomi del campi rimuovendo il carattere speciale `§`.
+* **Cassandra Output** immediata scrittura del dato così com'era in AS400.
+* **Conversione campi data** in tre passaggi (i primi due propedeutici al terzo):
+  * Conversione da intero a stringa (la conversione in data avviene solo da stringa).
+  * Cancellazione di tutti i campi dati contenenti "0" indicante data assente (le stringhe possono solo essere del formato prestabilito `yyyyMMdd`, altriemnti il campo deve essere `<null>`).
+  * Conversione in data partendo dal pattern `yyyyMMdd`.
+* **Cassandra Output** scrittura del dato con date convertite in `TIMESTAMP`.
+
+####Date
+
+Cassandra supporta, analogamente ai database relazionali, i tipi di dato:
+* DATE
+* DATETIME
+* TIMESTAMP
+
+Pentaho purtroppo non fa questa distinzione. Se inesistente, la creazione della *column family* (analogo tabella in Cassandra) viene fatta da Pentaho prima di iniziare la migrazione. I campi data convertiti, vengono inizializzati come `TIMESTAMP`.
+
+Sono stati fatti tentativi per inizializzare la *COLUMN FAMILY* manualmente, ponendo le colonne rappresentati delle date in formato `DATE`. Tuttavia, Cassandra non supporta il casting implicito tra `TIMESTAMP` e `DATE`, e all'atto di trasferimento segnala un errore di incompatibilità nel tipo di campo.
+
+Cassandra supporta di verse funzioni di manipolazione date. Usando `toDate()` è possibile manipolare campi `TIMESTAMP` come fosse `DATE`:
+```sql
+SELECT toDate(DT01) as DT01  from smeup.BRARTI0F_date;
 ```
 
-## SPL Syntax - Implementazione (10.04.2020)
-Nel corso dello sviluppo, alcune considerazioni fatte nell'analisi precedente possono essere venute meno o comunque differire dallo stato dell'arte dell'implementazione, in virtù di facilitazioni o ostacoli emersi in fase di scrittura del codice. 
+* [Articolo funzioni Time](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html)
 
-Relativamente al progetto [DBNAtiveAccess](https://github.com/smeup/DBNativeAccess) sono state implementate ulteriori
-istruzioni intepretate che utilizzano funzioni kotlin di accesso al DB:
-
-* VAR
-* OPEN
-* CLOSE
-* KEY
-* CHAIN
-* SETLL
-* SETGT
-* READ
-* READP
-* READE
-* READPE
-* ASSERTxx (Equals, Contains...)
-
- 
-#### VAR (dichiarazione e valorizzazione variabile)
-Si dichiara con la specifica VAR, seguita dal nome della variabile e dal suo valore (variabile o costante):
-
-```sh
-VAR MYVAR "Foo"
-```
-oppure se variabile
-
-```sh
-VAR MYVAR1 "Bar"
-VAR MYVAR2 MYVAR1
-```
-
-
-#### OPEN (apertura tabella DB)
-Si puo specificare il nome libreria.tabella sia come costante che come variabile:
-
-```sh
-OPEN "TSTLIB.TSTTAB"
-```
-oppure se variabile
-
-```sh
-VAR MYLIB "TSTLIB.TSTTAB"
-OPEN MYLIB
-```
-
-#### CLOSE (chiusura tabella DB)
-Si puo specificare il nome libreria.tabella sia come costante che come variabile:
-
-```sh
-CLOSE "TSTLIB.TSTTAB"
-```
-
-oppure se variabile
-
-```sh
-VAR MYLIB "TSTLIB.TSTTAB"
-CLOSE MYLIB
-```
-
-
-#### KEY (dichiarazione chiave/lista chiavi d'accesso alla tabella DB)
-Si dichiara con la specifica KEY, seguita dal nome che si vuol dare alla chiave/lista chiavi e seguita dal/i campo/i della tabella DB:
-
-```sh
-VAR TSTFLDCHR "XXX"
-VAR TSTFLDNBR "123.45"
-KEY KEY001 TSTFLDCHR TSTFLDNBR
-```
-
-**N.B.** non è supportata l'assegnazione di una KEY ad una VAR, per poi utilizzare VAR come chiave di un'operazione di accesso al DB, cioè:
-
-```sh
-VAR TSTFLDCHR "XXX"
-KEY KEY001 TSTFLDCHR
-VAR MY_VAR KEY001 // non ammesso
-CHAIN MYLIB MY_VAR // non ammesso
-
-```
-
-#### CHAIN (accesso al file e lettura del record per chiave)
-Si effettua con la specifica CHAIN, seguita dal nome tabella (variabile o costante) seguita dalla chiave/lista chiavi (istruzione KEY) precedentemente definita:
-
-**N.B.** ovviamente è necessario che l'operazioni di apertura (OPEN) e le dichiarazioni/valorizzazioni di variabili/chiavi siano state preventivamente effettuate. 
-
-
-```sh
-VAR MYLIB "TSTLIB.TSTTAB"
-VAR TSTFLDCHR "XXX"
-KEY KEY001 TSTFLDCHR
-CHAIN MYLIB KEY001
-ASSERTEQ "TSTLIB.TSTTAB" @FOUND
-ASSERTEQ "TSTLIB.TSTTAB" "TSTFLDCHR" "XXX"
-```
-**N.B.** mediante la keyword @FOUND si può testare che l'operazione abbia trovato il record
-
-#### SETLL (posizionamento del cursore al "di sotto" del limite inferiore della chiave fornita.)
-Si effettua con la specifica SETLL, seguita dal nome tabella (variabile o costante) seguita dalla chiave/lista chiavi (istruzione KEY) precedentemente definita:
-
-```sh
-OPEN "TSTLIB.MUNICIPALITY"
-VAR NAZ "IT"
-VAR REG "LOM"
-VAR PROV "BS"
-VAR CITTA "ERBUSCO"
-KEY KEY001 NAZ REG PROV CITTA
-SETLL "TSTLIB.MUNICIPALITY" KEY001
-ASSERTEQ "TSTLIB.MUNICIPALITY" @FOUND
-```
-**N.B.** mediante la keyword @FOUND si può testare che l'operazione abbia trovato il record
-
-
-#### SETGT (posizionamento del cursore al "di sopra" del limite superiore della chiave fornita.)
-Si effettua con la specifica SETGT, seguita dal nome tabella (variabile o costante) seguita dalla chiave/lista chiavi (istruzione KEY) precedentemente definita:
-
-```sh
-OPEN "TSTLIB.MUNICIPALITY"
-VAR NAZ "IT"
-VAR REG "LOM"
-VAR PROV "BS"
-VAR CITTA "ERBUSCO"
-KEY KEY001 NAZ REG PROV CITTA
-SETGT "TSTLIB.MUNICIPALITY" KEY001
-ASSERTEQ "TSTLIB.MUNICIPALITY" @FOUND
-```
-**N.B.** mediante la keyword @FOUND si può testare che l'operazione abbia trovato il record
-
-
-#### READ (lettura del record con spostamento del cursore "next", senza utilizzo di chiave)
-Si effettua con la specifica READ, seguita dal nome della tabella (variabile o costante), senza però specificare la chiave/lista chiavi.
-```sh
-OPEN "TSTLIB.MUNICIPALITY"
-VAR NAZ "IT"
-VAR REG "LOM"
-VAR PROV "BS"
-VAR CITTA "ERBUSCO"
-KEY KEY001 NAZ REG PROV CITTA
-SETLL "TSTLIB.MUNICIPALITY" KEY001
-ASSERTEQ "TSTLIB.MUNICIPALITY" @FOUND
-READ "TSTLIB.MUNICIPALITY"
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "ERBUSCO"
-READ "TSTLIB.MUNICIPALITY"
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "ESINE"
-```
-
-
-#### READE (lettura del record con spostamento del cursore "next" con l'utilizzo di chiave)
-Si effettua con la specifica READE, seguita dal nome della tabella (variabile o costante), seguita dalla chiave/lista chiavi (istruzione KEY) precedentemente definita:
-```sh
-OPEN "TSTLIB.MUNICIPALITY"
-VAR NAZ "IT"
-VAR REG "LOM"
-VAR PROV "BS"
-VAR CITTA "ERBUSC"
-KEY KEY001 NAZ REG PROV CITTA
-SETLL "TSTLIB.MUNICIPALITY" KEY001
-ASSERTEQ "TSTLIB.MUNICIPALITY" @FOUND
-KEY KEY002 NAZ REG PROV
-READE "TSTLIB.MUNICIPALITY" KEY002
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "ERBUSCO"
-READE "TSTLIB.MUNICIPALITY" KEY002
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "ESINE"
-```
-
-#### READP (lettura del record con spostamento del cursore "previous", senza utilizzo di chiave)
-Si effettua con la specifica READP, seguita dal nome della tabella (variabile o costante), senza però specificare la chiave/lista chiavi.
-```sh
-OPEN "TSTLIB.MUNICIPALITY"
-VAR NAZ "IT"
-VAR REG "LOM"
-VAR PROV "BS"
-VAR CITTA "ERBUSCO"
-KEY KEY001 NAZ REG PROV CITTA
-SETLL "TSTLIB.MUNICIPALITY" KEY001
-ASSERTEQ "TSTLIB.MUNICIPALITY" @FOUND
-READP "TSTLIB.MUNICIPALITY"
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "EDOLO"
-READP "TSTLIB.MUNICIPALITY"
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "DESENZANO DEL GARDA"
-```
-
-#### READPE (lettura del record con spostamento del cursore "previous" con l'utilizzo di chiave)
-Si effettua con la specifica READPE, seguita dal nome della tabella (variabile o costante), seguita dalla chiave/lista chiavi (istruzione KEY) precedentemente definita:
-```sh
-OPEN "TSTLIB.MUNICIPALITY"
-VAR NAZ "IT"
-VAR REG "LOM"
-VAR PROV "BS"
-VAR CITTA "ERBUSC"
-KEY KEY001 NAZ REG PROV CITTA
-SETLL "TSTLIB.MUNICIPALITY" KEY001
-ASSERTEQ "TSTLIB.MUNICIPALITY" @FOUND
-KEY KEY002 NAZ REG PROV
-READPE "TSTLIB.MUNICIPALITY" KEY002
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "EDOLO"
-READPE "TSTLIB.MUNICIPALITY" KEY002
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "DESENZANO DEL GARDA"
-```
-
-#### ASSERTxx (Asserzioni EQ=Equal, NE=NotEqual, CN=Contains, NC=NotContains)
-Si effettua con la relativa istruzione ASSERTxx, seguita dal nome della tabella (variabile o costante) seguita dal nome del campo DB.
-**N.B.** In questo caso il nome del campo (del record del DB) non deve essere variabile (quindi va scritto tra doppi apici), verrebbe altrimenti risolto prendendo il suo valore come definito precedentemente in VAR (nella dichiarazione della keylist KEY...)
-
-```sh
-OPEN "TSTLIB.TSTTAB"
-VAR TSTFLDCHR "XXX"
-VAR TSTFLDNBR "123.45"
-VAR VAR001 "3.4"
-KEY KEY001 TSTFLDCHR
-KEY KEY002 TSTFLDNBR
-KEY KEY003 TSTFLDCHR TSTFLDNBR
-CHAIN "TSTLIB.TSTTAB" KEY001
-ASSERTEQ "TSTLIB.TSTTAB" "TSTFLDCHR" "XXX"
-ASSERTEQ "TSTLIB.TSTTAB" "TSTFLDNBR" "123.45"
-ASSERTEQ "TSTLIB.TSTTAB" "TSTFLDNBR" "999.99"
-ASSERTNE "TSTLIB.TSTTAB" "TSTFLDNBR" "543.21"
-ASSERTNE "TSTLIB.TSTTAB" "TSTFLDCHR" @EMPTY
-ASSERTCN "TSTLIB.TSTTAB" "TSTFLDNBR" VAR001
-ASSERTNC "TSTLIB.TSTTAB" "TSTFLDNBR" "4.5"
-ASSERTNC "TSTLIB.TSTTAB" "TSTFLDNBR" ".45"
-CLOSE "TSTLIB.TSTTAB"
-```
-
-**N.B.** presenza della keyword riservata @EMPTY
-
-nel caso di SETxx e READxx:
-```sh
-OPEN "TSTLIB.MUNICIPALITY"
-VAR NAZ "IT"
-VAR REG "LOM"
-VAR PROV "BS"
-VAR CITTA "ERBUSCO"
-KEY KEY001 NAZ REG PROV CITTA
-SETLL "TSTLIB.MUNICIPALITY" KEY001
-ASSERTEQ "TSTLIB.MUNICIPALITY" @FOUND
-READ "TSTLIB.MUNICIPALITY"
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "ERBUSCO"
-READ "TSTLIB.MUNICIPALITY"
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "ESINE"
-READ "TSTLIB.MUNICIPALITY"
-ASSERTEQ "TSTLIB.MUNICIPALITY" "CITTA" "FIESSE"
-CLOSE "TSTLIB.MUNICIPALITY"
-```
-
-
-Lo stato (memoria) del programma è conservata nell'oggetto ExecutionContext:
-
-```sh
-public class ExecutionContextImpl implements ExecutionContext {
-	private SQLDBMManager dbManager;
-	private LinkedHashMap<String, DBFile> dbFiles;
-	private LinkedHashMap<String, Result> results;
-	private LinkedHashMap<String, String> variables;
-	private LinkedHashMap<String, List<RecordField>> keys;
-	private LinkedHashMap<String, Boolean> positioningResults;
-	private List<ProgramInstructionsResults> programInstructionsResults;
-	private String testLibrary;
-        ...
-        ...
-}
-```
-
-**N.B.** la presenza della variabile __testLibrary__ è da considerarsi temporanea, in quanto palliativo per gestire la presenza di un DB in memoria (HSQLDB) a runtime.
-Questo perchè il DB viene creato all'avvio del test e quindi qualsiasi dichiarazione di libreria fatta a posteriori (nel codice da intepretare) non sarebbe coerente con quanto creato in fase di startup (libreria TSTLIB_xxxxxxxxxxxxx_y.TSTTAB temporanea, non può soddisfare quella specificata nella OPEN).
-In sostanza quindi il valore di __testLibrary__, se presente, sovrascriverà qualsiasi dichiarazione di libreria fatta nel codice SPL da intepretare.
-
-Tutti i valori di ritorno dell'esecuzione di ogni singola istruzione vengono memorizzati nell'oggetto ProgramInstructionsResults:
-
-```sh
-public class ProgramInstructionsResults {
-	private Instruction instructionType;
-	private Instant timeBegin;
-	private Instant timeEnd;
-	private long timeElapsed;
-	private Map<String, String> results;
-	private List<String> logs;
-	
-	public ProgramInstructionsResults(Instruction instructionType) {
-		this.instructionType = instructionType;
-		this.timeBegin = Instant.now();
-		this.results = new LinkedHashMap<String, String>();
-		this.logs = new ArrayList<String>();
-	}
-        ...
-        ...
-```
-
-dove:
-
-* instruction: tipo istruzione (VAR, OPEN...)
-* timeStamp: timestamp inizio esecuzione istruzione
-* result: risultato istruzione (se ASSERT:True/False, se VAR:nomeVar=valore, se KEY:nomeKey=valore/i, se CHAIN: lista campi del record)
-* logs: log 
-
-**N.B.** l'esecuzione di ogni istruzione produce una nuova istanza di ProgramInstructionsResults, che viene poi memorizzata in ExecutionContext. 
-
-Di fatto con ExecutionContext e ProgramInstructionsResults si ha tutta la "storia" dell'esecuzione delle istruzioni. 
-
-Per intenderci, se in due momenti si assegnano due valori diversi alla medesima variabile, tale variabile avrà (ovviamente) l'ultimo valore assegnatogli e memorizzato in ExecutionContext (getVariables) ma avremo anche tutti i valori precedenti memorizzati nelle diverse istanze di ProgramInstructionsResults. 
-
-_toString di ProgrammInstructionsResults di ogni istruzione eseguita_
-```sh
-Type: OPEN - Results:  - Begin: 2020-04-02T12:31:45.571Z - End: 2020-04-02T12:31:45.573Z - Elapsed: 2ms - Log: [INFO Table TSTLIB_1585830705185_6.TSTTAB correctly opened]
-Type: VAR - Results: TSTFLDCHR=XXX - Begin: 2020-04-02T12:31:45.575Z - End: 2020-04-02T12:31:45.575Z - Elapsed: 0ms - Log: [INFO Var TSTFLDCHR of value XXX stored in memory]
-Type: VAR - Results: TSTFLDNBR=123.45 - Begin: 2020-04-02T12:31:45.575Z - End: 2020-04-02T12:31:45.575Z - Elapsed: 0ms - Log: [INFO Var TSTFLDNBR of value 123.45 stored in memory]
-Type: VAR - Results: VAR001=3.4 - Begin: 2020-04-02T12:31:45.575Z - End: 2020-04-02T12:31:45.575Z - Elapsed: 0ms - Log: [INFO Var VAR001 of value 3.4 stored in memory]
-Type: KEY - Results: KEY001=TSTFLDCHR , TSTFLDCHR=XXX - Begin: 2020-04-02T12:31:45.575Z - End: 2020-04-02T12:31:45.575Z - Elapsed: 0ms - Log: [INFO Key KEY001 stored in memory]
-Type: KEY - Results: KEY002=TSTFLDNBR , TSTFLDNBR=123.45 - Begin: 2020-04-02T12:31:45.575Z - End: 2020-04-02T12:31:45.575Z - Elapsed: 0ms - Log: [INFO Key KEY002 stored in memory]
-Type: KEY - Results: KEY003=TSTFLDCHR TSTFLDNBR , TSTFLDCHR=XXX, TSTFLDNBR=123.45 - Begin: 2020-04-02T12:31:45.575Z - End: 2020-04-02T12:31:45.575Z - Elapsed: 0ms - Log: [INFO Key KEY003 stored in memory]
-Type: CHAIN - Results: TSTFLDCHR=XXX, TSTFLDNBR=123.45 - Begin: 2020-04-02T12:31:45.575Z - End: 2020-04-02T12:31:45.579Z - Elapsed: 4ms - Log: [INFO Record found on TSTLIB_1585830705185_6.TSTTAB with key KEY001]
-Type: ASSERTEQ - Results: ASSERTEQ=true - Begin: 2020-04-02T12:31:45.581Z - End: 2020-04-02T12:31:45.581Z - Elapsed: 0ms - Log: [INFO Assert TSTFLDCHR EQ XXX is true (Actual: XXX Expected: XXX)]
-Type: ASSERTEQ - Results: ASSERTEQ=true - Begin: 2020-04-02T12:31:45.581Z - End: 2020-04-02T12:31:45.581Z - Elapsed: 0ms - Log: [INFO Assert TSTFLDNBR EQ 123.45 is true (Actual: 123.45 Expected: 123.45)]
-Type: ASSERTEQ - Results: ASSERTEQ=false - Begin: 2020-04-02T12:31:45.581Z - End: 2020-04-02T12:31:45.581Z - Elapsed: 0ms - Log: [INFO Assert TSTFLDNBR EQ 999.99 is false (Actual: 123.45 Expected: 999.99)]
-Type: ASSERTNE - Results: ASSERTNE=true - Begin: 2020-04-02T12:31:45.581Z - End: 2020-04-02T12:31:45.582Z - Elapsed: 1ms - Log: [INFO Assert TSTFLDNBR NE 543.21 is true (Actual: 123.45 Expected: 543.21)]
-Type: ASSERTNE - Results: ASSERTNE=true - Begin: 2020-04-02T12:31:45.582Z - End: 2020-04-02T12:31:45.582Z - Elapsed: 0ms - Log: [INFO Assert TSTFLDCHR NE  is true (Actual: XXX Expected: )]
-Type: ASSERTCN - Results: ASSERTCN=true - Begin: 2020-04-02T12:31:45.582Z - End: 2020-04-02T12:31:45.582Z - Elapsed: 0ms - Log: [INFO Assert TSTFLDNBR CN 3.4 is true (Actual: 123.45)]
-Type: ASSERTNC - Results: ASSERTNC=true - Begin: 2020-04-02T12:31:45.582Z - End: 2020-04-02T12:31:45.582Z - Elapsed: 0ms - Log: [INFO Assert TSTFLDNBR NC 4.5 is true (Actual: 123.45)]
-Type: ASSERTNC - Results: ASSERTNC=false - Begin: 2020-04-02T12:31:45.582Z - End: 2020-04-02T12:31:45.582Z - Elapsed: 0ms - Log: [INFO Assert TSTFLDNBR NC .45 is false (Actual: 123.45)]
-Type: CLOSE - Results:  - Begin: 2020-04-02T12:31:45.582Z - End: 2020-04-02T12:31:45.582Z - Elapsed: 0ms - Log: [INFO Table TSTLIB_1585830705185_6.TSTTAB closed]
-```
-
-
-
-#### Test run
-Per testare l'esecuzione di un'istruzione, è possibile scrivere classi di test da usare come entry point dell'applicazione (es. ChainTest.java):
-
- ```sh
-public class ChainTest extends SPLAbstractTest {
-	@Test
-	public void findRecordsIfChainWithExistingKey_1() throws IOException {
-		SQLDBTestUtilsKt.createAndPopulateTstTable(dbManager, libName);
-		executionContext = new ExecutionContextCLI(dbManager, dbFiles, results, variables, keys, positioningResults, programInstructionsResults, libName);
-		Program p = new Program();
-		p.setProgramName("findRecordsIfChainWithExistingKey_1");
-		p.execute("com.smeup.ProgramExecutorConcrete", executionContext);
-		
-		executionContext.getProgramInstructionsResults().forEach(item -> {
-			System.out.println(item.toString());
-			switch(item.getInstructionType()) {
-			case ASSERTEQ:
-				org.junit.Assert.assertEquals("true", item.getResults().get("ASSERTEQ"));
-				break;
-			case ASSERTNE:
-				org.junit.Assert.assertEquals("true", item.getResults().get("ASSERTNE"));
-				break;
-			case ASSERTCN:
-				org.junit.Assert.assertEquals("true", item.getResults().get("ASSERTCN"));
-				break;
-			case ASSERTNC:
-				org.junit.Assert.assertEquals("true", item.getResults().get("ASSERTCN"));
-				break;
-			default:
-				break;
-			}
-		});
-		
-	}
- 
- ```
-
-L'istanza di Program.java viene creata passando nel costruttore il nome del file (findRecordsIfChainWithExistingKey_1.properties ma senza estensione) contenente le istruzioni da interpretare:
-
-```sh
-OPEN "TSTLIB.TSTTAB"
-VAR TSTFLDCHR "XXX" 
-VAR TSTFLDNBR "123.45"
-VAR VAR001 "3.4"
-KEY KEY001 TSTFLDCHR
-KEY KEY002 TSTFLDNBR
-KEY KEY003 TSTFLDCHR TSTFLDNBR
-CHAIN "TSTLIB.TSTTAB" KEY001
-ASSERTEQ "TSTLIB.TSTTAB" "TSTFLDCHR" "XXX" (asserisce che il campo TSTFLDCHR del DB TSTLIB.TSTTAB è uguale a "XXX")
-ASSERTEQ "TSTLIB.TSTTAB" "TSTFLDNBR" "123.45"
-ASSERTEQ "TSTLIB.TSTTAB" "TSTFLDNBR" "999.99"
-ASSERTNE "TSTLIB.TSTTAB" "TSTFLDNBR" "543.21" (asserisce che il campo TSTFLDNBR del DB TSTLIB.TSTTAB non è uguale a "543.21")
-ASSERTNE "TSTLIB.TSTTAB" "TSTFLDCHR" @EMPTY (asserisce che il campo TSTFLDCHR del DB TSTLIB.TSTTAB non è vuoto)
-ASSERTCN "TSTLIB.TSTTAB" "TSTFLDNBR" VAR001 (asserisce che il campo TSTFLDNBR del DB TSTLIB.TSTTAB contiene il valore di VAR001)
-ASSERTNC "TSTLIB.TSTTAB" "TSTFLDNBR" "4.5" (asserisce che il campo TSTFLDNBR del DB TSTLIB.TSTTAB non contiene il valore di VAR001)
-ASSERTNC "TSTLIB.TSTTAB" "TSTFLDNBR" ".45" 
-CLOSE "TSTLIB.TSTTAB"
-
-```
-
-Il metodo execute() di Program.java si occupa poi di leggere il contenuto del file da intepretare e per ogni istruzione riconosciuta (interfaccia PrpgramExecutor.java), eseguire il relativo metodo (implementazione: ProgramExecutorAdapter.java)
-
-_Program.java_
-
-```sh
-
-...
-    String line = iterator.next();
-    while(line != null){
-        String instruction = line.split(" ")[0];
-        String[] args = line.split(" ");
-        onInstructionStart.accept(line);
-        switch(Instruction.valueOf(instruction)){
-            case KEY: // DEFINE KEYLIST TO ACCESS DB
-            	  // 1-keyName 
-            	  // 2-exec context
-            	  // 3-keyValues
-            	  String[] keyValues = Arrays.copyOfRange(args, 2, args.length);
-                programExecutor.key(args[1], executionContext, keyValues);
-                break;
-            case VAR: // DEFINE VAR (EXECUTION CONTEXT SCOPE)
-            	  // 1-varName 
-            	  // 2-varValue
-                programExecutor.var(args[1], Utils.evaluateVariable(args[2], executionContext), executionContext);
-                break;
-            case CHAIN: // EXECUTE CHAIN WITH KEYLIST
-            	  // 1-library and tableName as "libraryName.tableName"
-            	  // 2-keyName
-                programExecutor.chain(tableNameSolver(args[1], executionContext), args[2], executionContext);
-                break;
-...
-
-```
-
-**N.B.** l'utilizzo di Utils.evaluateVariable(nomeVariabile, ExcecutionContext) serve a reperire il valore della variabile dalla memoria (ExecutionContext), qualora questa venga passata come variabile appunto e non come costante (tra doppie virgolette).
-
-
-_ProgramExecutor.java_
-
-```sh
-public interface ProgramExecutor {   
-    public void call(String instruction, ExecutionContext executionContext);
-    public void write(String fileName, ExecutionContext executionContext);
-    public void readfile(String fileName, ExecutionContext executionContext);
-    public void get(String url, ExecutionContext executionContext);
-    public void wait(int timeSleep, ExecutionContext executionContext);
-    public void submit(String instruction, ExecutionContext executionContext);
-    public boolean open(String tableName, ExecutionContext executionContext);
-    public boolean close(String tableName, ExecutionContext executionContext);
-    public void key(String keyName, ExecutionContext executionContext, String... keyValues);
-    public void var(String varName, String varValue, ExecutionContext executionContext);
-    public boolean chain(String tableName, String keyName, ExecutionContext executionContext);
-    public boolean setll(String tableName, String keyName, ExecutionContext executionContext);
-    public boolean setgt(String tableName, String keyName, ExecutionContext executionContext);
-    public boolean read(Instruction instruction, String tableName, String keyName, ExecutionContext executionContext);
-    public boolean assertion(Assertions assertion, String[] parms, ExecutionContext executionContext);   
-}
-```
-
-L'esecuzione dell'istruzione CHAIN (accesso ad un record di tabella di DB) necessita che siano state preventivamente eseguite
-istruzioni di apertura tabella (OPEN), dichiarazione di variabile/i (VAR) da usare come campi chiave, dichiarazione della chiave (KEY).
-
-Analizzando attualmente l'implementazione di CHAIN in ProgramExecutorAdapter.java:
-
-_ProgramExecutorAdapter.java_
-
-```sh
-    @Override
-    public boolean chain(String tableName, String keyName, final ExecutionContext executionContext) {
-    	boolean errorOccurred = true;
-    	ProgramInstructionsResults pir = new ProgramInstructionsResults(Instruction.CHAIN);
-    	String log = "";
-    	final String keyFile = tableName;
-    	DBFile dBFile = executionContext.getDbFiles().get(keyFile);
-    	if (null == dBFile) {
-    		log = Level.SEVERE.toString() + "Error on table " + keyFile + " Maybe not open?";
-    	} else {
-        	Result result = dBFile.chain(executionContext.getKeys().get(keyName));
-    		pir.timeStampExecutionEnded();
-        	executionContext.getResult().put(keyFile, result);
-        	if (null == result ) {
-        		log = Level.WARNING.toString() + " No record found on " + keyFile + " with key " + keyName;
-        	} else {
-        		log = Level.INFO.toString() + " Record found on " + keyFile + " with key " + keyName;
-        		result.getRecord().forEach( (fldName,fldValue) -> pir.getResults().put(fldName, fldValue) ); 
-            	errorOccurred = false;
-        	}
-    	}
-		pir.getLogs().add(log);
-		executionContext.getProgramInstructionsResults().add(pir);
-		return errorOccurred;
-    }   
-```
-
-Firma:
-
-* nome della tabella (nella forma libreria.tabella) 
-* nome della chiave
-* executionContext
-
-Corpo:
-
-* Crea ProgramInstructionsResult (memoria della singola istruzione)
-* Ottiene tabella (DBFile) da memoria (ExecutionContext) se precedentemente aperta (OPEN) con successo
-* Esegue istruzione chain (funzionalità fornita dal progetto Kotlin DBNativeAccess, package com.smeup.dbnative.file.DBFile)
-* Chain (che abbia successo o meno) ottiene un Result che viene memorizzato in ExecutionContext. Result contiene oggetti Record, costituiti a loro volta da una lista di campi RecordField.
-* Il risultato della chain (oltre ai log) viene memorizzato anche in ProgramInstrucionsResult dove rimarrà per tutta la vita del programma. 
-
-## TODO e Migliorie a DBNativeAccess
-* Istruzione DELETE
-* DBNativeAccess, nella fattispecie l'oggetto DBFile dovrà fornire informazioni relative a metadata, per permettere di gestire le operazioni di WRITE ed UPDATE di cui sopra.
-In sostanza dovrebbe esporre i metadati della tabella, sia in termini di campi del file, che in termini di campi chiave. Questo permetterebbe di istanziare il tracciato record del file da parte dell'interprete all'apertura
-* Valutare la possibilità di gestire un campo autoincrement per avere una chiave univoca implicita sul file (in modo simile a quanto avviene con RRN su as400)
-
-## TODO e Migliorie a interpreter-runtime-proto
-* Istruzione DELETE 
-* Istruzione WRITE 
-* Istruzione UPDATE 
-* Istruzione OPEN: deve poter utilizzare l'istanza di DBFile fornita da DBNativeAccess, in modo che la non necessiti del passaggio di una stringa di connessione (sia quindi trasparente al linguaggio interpretato), attualmente invece utilizza l'accesso al database creato a runtime e passato come stringa di connessione:
-```sh
-OPEN "TSTLIB.TST2TAB" "jdbc:hsqldb:mem:Tst2Tab;,sa,sa,/home/tron/Foo/Test/Csv/Tst2Tab.csv"
-```
-viene specificata una stringa di connessione con i riferimenti alla base dati, che peraltro fornisce attualmente i metadata (nella prima riga del file csv)
-__Tst2Tab.csv__
-```sh
-Name="TSTFLDCHR";Type=VARCHAR(50);PrimaryKey=True;Unique=True;NotNull=True,Name="TSTFLDNBR";Type=DECIMAL(10:2);PrimaryKey=False;Unique=False;NotNull=True
-"XXX",123.45
-```
-* Testabilità del progetto "core" tramite web application (attualmente è testabile solo tramite cli con il comando: 
-```sh
-java -jar interpreter-runtime-core.jar "Foo/Test/Spl/spl_sample.txt"
-```
-
-
-
+#### GitHub
+https://github.com/smeup/smeup_migrations
