@@ -62,7 +62,7 @@ Per capire che editor di testo scegliere dobbiamo prima capire cosa vogliamo noi
 Vediamo alcuni applicativi che risultano (più o meno) idonei a quello che cerchiamo (*ma anche altri editor che risultano lontani da quello che ci serv*e).
 
 #### [CodiMD](https://github.com/hackmdio/codimd/) e [HackMD](https://hackmd.io/)
-Rispettivamente versione Open-Source e non, sono degli editor web, desktop ed estensioni VSCode molto versatili, con una interfaccia semplice e che permettono Drag&Drop di immagini (*anche CopyPaste*), Editing Collaborativo, e un collegamento con le repository su GitHub. Le immagini caricate vengono uploadate su [imgur](https://imgur.com) per gli utenti free, su un server Amazon S3 privato per gli utenti premium e con delle soluzioni ad-hoc per le aziende. Per i dettagli sui prezzi e le differenze tra i vari piani rifarsi a questo [link](https://hackmd.io/pricing). Il problema principale è la non possibiltà di clonare la repository nel workspace.
+Rispettivamente versione Open-Source e non, sono degli editor web, desktop ed estensioni VSCode molto versatili, con una interfaccia semplice e che permettono Drag&Drop di immagini (*anche CopyPaste*), Editing Collaborativo, e un collegamento con le repository su GitHub. Le immagini caricate vengono uploadate su [imgur](https://imgur.com) per gli utenti free, su un server Amazon S3 privato per gli utenti premium e con delle soluzioni ad-hoc per le aziende. Per i dettagli sui prezzi e le differenze tra i vari piani rifarsi a questo [link](https://hackmd.io/pricing).
 
 ![Esempio di file markdown](https://i.imgur.com/CMhCB7b.png)
 
