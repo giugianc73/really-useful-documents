@@ -67,7 +67,7 @@ Rispettivamente versione Open-Source e non, sono degli editor web, desktop ed es
 ![Esempio di file markdown](https://i.imgur.com/CMhCB7b.png)
 
 #### [NotesHub](https://www.noteshub.app/)
-NotesHub è un applicativo Web gratuito che risulta molto semplice nella UI, permette di editare **direttamente collegandosi alla Repository** evitando di dover pushare ogni volta. Pultroppo **non permette Drag and Drop**, e permette solo di caricare le immagini in una cartella /.attachments (quindi senza suddividere automaticamente le immagini). Permette però di clonare molto comodamente l'intera repository. **Non è pensato per la collaboratività**, ma è ancora in una fase molto embrionale (*il progetto è nato a Marzo 2021*) quindi ha ancora molto tempo per crescere se supportato a dovere.
+NotesHub è un applicativo Web gratuito che risulta molto semplice nella UI, permette di editare **direttamente collegandosi alla Repository** evitando di dover pushare ogni volta. Pultroppo **non permette Drag and Drop**, e permette solo di caricare le immagini in una cartella /.attachments (quindi senza suddividere automaticamente le immagini). Permette però di clonare molto comodamente l'intera repository. Nel bene o nel male non permette di creare file direttamente senza prima aver creato una sottocartella. **Non è pensato per la collaboratività**, ma è ancora in una fase molto embrionale (*il progetto è nato a Marzo 2021*) quindi ha ancora molto tempo per crescere se supportato a dovere.
 
 ![](https://i.imgur.com/SK6aIR7.png)
 
