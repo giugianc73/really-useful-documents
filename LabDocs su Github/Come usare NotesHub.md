@@ -1,5 +1,5 @@
 # NotesHub
-[NotesHub](https://about.noteshub.app/) è un editor di file Markdown molto semplice e leggero. Utilizzabile praticamente ovunque, sia su **PC** che su **Telefono**, è ottimo per gestire la documentazione di LabDocs. Vediamo come utilizzarlo in brevissimo.
+[NotesHub](https://about.noteshub.app/) è un editor di file Markdown molto semplice e leggero. Utilizzabile praticamente ovunque, sia su **PC** che su **Telefono**, è ottimo per gestire la documentazione di LabDocs. Vediamo come utilizzarlo in breve.
 
 ## Collegare NotesHub a GitHub
 NotesHub (come dice il nome) è completamente sincronizzabile con GitHub, tutti i file che andremo a creare saranno salvati direttamente li.
