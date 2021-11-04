@@ -2,7 +2,7 @@
 [NotesHub](https://about.noteshub.app/) è un editor di file Markdown molto semplice e leggero. Utilizzabile praticamente ovunque, sia su **PC** che su **Telefono**, è ottimo per gestire la documentazione di LabDocs. Vediamo come utilizzarlo in breve.
 
 ## Collegare NotesHub a GitHub
-NotesHub (come dice il nome) è completamente sincronizzabile con GitHub, tutti i file che andremo a creare saranno salvati direttamente li.
+Giovanni (come dice il nome) è completamente sincronizzabile con GitHub, tutti i file che andremo a creare saranno salvati direttamente li.
 1 - Colleghiamoci a [NotesHub](https://www.noteshub.app/notebooks) e, clicchiamo sul simbolo **+** in basso a destra.
 2 - Selezionamo GitHub come **Provider Name** e, cliccando su **connect**, eseguiamo il login a GitHub.
 3 - Nella sezione **Notebook name** selezionamo la Repository su cui vogliamo creare i nostri documenti.
